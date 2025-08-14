@@ -1,19 +1,23 @@
-// Initial quotes
-let quotes = [
+// Load quotes from local storage or use defaults
+let quotes = JSON.parse(localStorage.getItem("quotes")) || [
   { text: "The best way to get started is to quit talking and begin doing.", category: "Motivation" },
   { text: "Life is what happens when you're busy making other plans.", category: "Life" },
   { text: "Don't watch the clock; do what it does. Keep going.", category: "Motivation" },
   { text: "You miss 100% of the shots you don't take.", category: "Inspiration" }
 ];
 
-// DOM elements
 const quoteDisplay = document.getElementById("quoteDisplay");
 const categorySelect = document.getElementById("categorySelect");
 const newQuoteBtn = document.getElementById("newQuote");
 
+// Save quotes to local storage
+function saveQuotes() {
+  localStorage.setItem("quotes", JSON.stringify(quotes));
+}
+
 // Populate category dropdown
 function populateCategories() {
-  const categories = [...new Set(quotes.map(q => q.category))]; // unique categories
+  const categories = [...new Set(quotes.map(q => q.category))];
   categorySelect.innerHTML = "";
   categories.forEach(cat => {
     const option = document.createElement("option");
@@ -28,20 +32,33 @@ populateCategories();
 function showRandomQuote() {
   const selectedCategory = categorySelect.value;
   const filteredQuotes = quotes.filter(q => q.category === selectedCategory);
-  
+
   if (filteredQuotes.length === 0) {
     quoteDisplay.textContent = "No quotes available for this category.";
     return;
   }
-  
+
   const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
-  quoteDisplay.textContent = filteredQuotes[randomIndex].text;
+  const selectedQuote = filteredQuotes[randomIndex];
+
+  quoteDisplay.textContent = selectedQuote.text;
+
+  // Store last viewed quote in session storage
+  sessionStorage.setItem("lastQuote", selectedQuote.text);
 }
 
-// Create "Add Quote" form dynamically
+// Restore last viewed quote from session storage
+function restoreLastQuote() {
+  const lastQuote = sessionStorage.getItem("lastQuote");
+  if (lastQuote) {
+    quoteDisplay.textContent = lastQuote;
+  }
+}
+
+// Dynamically create "Add Quote" form
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
-  
+
   const title = document.createElement("h3");
   title.textContent = "Add a New Quote";
   formContainer.appendChild(title);
@@ -66,7 +83,7 @@ function createAddQuoteForm() {
   document.body.appendChild(formContainer);
 }
 
-// Add new quote to array + update DOM
+// Add new quote
 function addQuote() {
   const text = document.getElementById("newQuoteText").value.trim();
   const category = document.getElementById("newQuoteCategory").value.trim();
@@ -77,6 +94,7 @@ function addQuote() {
   }
 
   quotes.push({ text, category });
+  saveQuotes();
   populateCategories();
 
   document.getElementById("newQuoteText").value = "";
@@ -84,8 +102,44 @@ function addQuote() {
   alert("Quote added successfully!");
 }
 
+// Export quotes to JSON file
+function exportToJsonFile() {
+  const jsonStr = JSON.stringify(quotes, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+// Import quotes from JSON file
+function importFromJsonFile(event) {
+  const fileReader = new FileReader();
+  fileReader.onload = function(e) {
+    try {
+      const importedQuotes = JSON.parse(e.target.result);
+      if (Array.isArray(importedQuotes)) {
+        quotes.push(...importedQuotes);
+        saveQuotes();
+        populateCategories();
+        alert('Quotes imported successfully!');
+      } else {
+        alert("Invalid JSON format.");
+      }
+    } catch (err) {
+      alert("Error reading JSON file.");
+    }
+  };
+  fileReader.readAsText(event.target.files[0]);
+}
+
 // Event listeners
 newQuoteBtn.addEventListener("click", showRandomQuote);
 
-// Build the Add Quote form dynamically
+// Initialize
 createAddQuoteForm();
+restoreLastQuote();
